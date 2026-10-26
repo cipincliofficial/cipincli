@@ -1,0 +1,58 @@
+name: release
+
+# Push a tag like v2.1.5 to build Cipin CLI for every platform and publish a GitHub Release.
+# After the release is up, publish the npm package from ./npm (npm version must match the tag).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      OPENCODE_CHANNEL: latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Set version from tag
+        run: echo "OPENCODE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - run: bun install
+
+      - name: Build binaries
+        working-directory: packages/cli
+        run: |
+          for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64; do
+            bun run script/build.ts --target="opencode-$target" --skip-web-ui
+          done
+
+      - name: Package
+        run: |
+          mkdir -p release
+          for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64; do
+            src="packages/cli/dist/cli-$target/bin"
+            stage="$(mktemp -d)"
+            if [ "${target%%-*}" = "windows" ]; then
+              cp "$src/opencode.exe" "$stage/cipin.exe"
+              tar czf "release/cipin-$target.tar.gz" -C "$stage" cipin.exe
+            else
+              cp "$src/opencode" "$stage/cipin"
+              tar czf "release/cipin-$target.tar.gz" -C "$stage" cipin
+            fi
+          done
+          (cd release && sha256sum cipin-*.tar.gz > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --title "Cipin CLI ${GITHUB_REF_NAME}" \
+            --generate-notes

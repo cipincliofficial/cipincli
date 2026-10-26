@@ -1,0 +1,25 @@
+{
+  "name": "cipincli",
+  "version": "2.1.4",
+  "description": "Cipin CLI: AI coding agent in your terminal, powered by the Cipincode gateway",
+  "license": "MIT",
+  "homepage": "https://cipincode.com/cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cipincliofficial/cipincli.git"
+  },
+  "bugs": "https://github.com/cipincliofficial/cipincli/issues",
+  "keywords": ["cipin", "cipincode", "cli", "ai", "coding-agent"],
+  "bin": {
+    "cipin": "bin/cipin.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": ["bin/cipin.js", "install.js", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "cpu": ["x64", "arm64"]
+}
