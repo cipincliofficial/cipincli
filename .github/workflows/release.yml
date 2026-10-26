@@ -31,13 +31,16 @@ jobs:
         run: |
           for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64; do
             bun run script/build.ts --target="opencode-$target" --skip-web-ui
+            # The build script wipes dist/ on every run, so keep each target's output right away.
+            mkdir -p "$GITHUB_WORKSPACE/out"
+            cp -r "dist/cli-$target" "$GITHUB_WORKSPACE/out/cli-$target"
           done
 
       - name: Package
         run: |
           mkdir -p release
           for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64; do
-            src="packages/cli/dist/cli-$target/bin"
+            src="out/cli-$target/bin"
             stage="$(mktemp -d)"
             if [ "${target%%-*}" = "windows" ]; then
               cp "$src/opencode.exe" "$stage/cipin.exe"
