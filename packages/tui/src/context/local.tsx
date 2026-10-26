@@ -245,6 +245,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             (configured?.providerID === model.providerID && configured.id === model.modelID
               ? configured.variant
               : undefined) ??
+            agent.current()?.variant ??
             (fallback?.providerID === model.providerID && fallback.modelID === model.modelID
               ? fallback.variant
               : undefined),

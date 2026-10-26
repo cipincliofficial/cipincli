@@ -265,7 +265,9 @@ export function classifyProviderFailure(input: ProviderFailure): AIError["reason
   if (
     input.status === 402 ||
     codes.some((code) => QUOTA_CODES.has(code)) ||
-    (input.status === 429 && QUOTA_TEXT.test(text))
+    (input.status === 429 && QUOTA_TEXT.test(text)) ||
+    // Cipincode gateway: a spent 5-hour session or weekly allowance will not clear by retrying.
+    (input.status === 429 && /"blocked"\s*:\s*"(session|weekly|tokens)"/.test(body))
   )
     return new QuotaExceededError({ ...details, retryAfterMs: input.retryAfterMs })
   if (

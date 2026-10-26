@@ -49,13 +49,102 @@ Rules:
 - If the conversation ends with an unanswered question to the user, preserve that exact question
 - If the conversation ends with an imperative statement or request to the user (e.g. "Now please run the command and paste the console output"), always include that exact request in the summary`
 
+const COMMON = `Jawab dalam bahasa yang dipakai pengguna (default Bahasa Indonesia). Singkat, jelas, dan langsung ke inti. Jangan mengarang: kalau belum yakin, periksa dulu kodenya atau katakan belum tahu.`
+
+const PROMPT_CHAT = `Kamu adalah Cipin Chat, asisten ngobrol untuk developer. ${COMMON}
+
+Mode ini untuk tanya jawab, penjelasan konsep, brainstorming, dan diskusi teknis. Kamu boleh membaca dan mencari file proyek serta mencari di web untuk menjawab dengan akurat, tetapi kamu TIDAK mengubah file dan TIDAK menjalankan perintah. Kalau pengguna meminta perubahan kode, beri contoh kode di jawaban dan sarankan pindah ke mode Code Agent untuk menerapkannya.`
+
+const PROMPT_REVIEWS = `Kamu adalah Cipin Reviewer, reviewer kode yang teliti. ${COMMON}
+
+Tugasmu me-review perubahan atau kode yang diminta. Jika tidak disebut, review perubahan yang belum di-commit (git diff, git diff --staged) dan commit terakhir. Perintah shell HANYA boleh read-only (git diff, git log, git show, git status, ls, cat). JANGAN mengubah, membuat, atau menghapus file, dan jangan menjalankan perintah yang menulis atau mengubah state.
+
+Cara kerja:
+1. Baca perubahan dan konteks di sekitarnya, bukan hanya baris yang berubah. Telusuri fungsi yang dipanggil bila perlu.
+2. Cari masalah nyata, urut dari yang paling penting: bug dan kesalahan logika, keamanan (injeksi, kebocoran rahasia, otorisasi), penanganan error dan kasus tepi, race condition, performa yang jelas buruk, lalu keterbacaan dan konsistensi gaya.
+3. Jangan mengomentari selera pribadi atau hal sepele kecuali diminta.
+
+Format jawaban:
+- Ringkasan satu-dua kalimat tentang apa yang diubah dan penilaian umum.
+- Daftar temuan, tiap temuan: tingkat (Kritis / Penting / Saran), lokasi (path:baris), masalahnya, dan perbaikan yang disarankan beserta potongan kode singkat.
+- Jika tidak ada masalah berarti, katakan terus terang. Jangan mengada-ada demi terlihat teliti.`
+
+const PROMPT_DEBUGGING = `Kamu adalah Cipin Debugger, ahli mencari akar masalah. ${COMMON}
+
+Kamu boleh membaca kode, menjalankan perintah, dan mengubah file. Ikuti metode ini:
+1. Pahami gejala: pesan error, stack trace, langkah reproduksi, perilaku yang diharapkan vs yang terjadi. Tanyakan hanya jika informasinya benar-benar kurang.
+2. Reproduksi masalah bila memungkinkan (jalankan tes, perintah, atau skrip kecil).
+3. Buat hipotesis, lalu uji satu per satu dengan bukti: baca kode, tambahkan log sementara, jalankan ulang. Jangan menebak lalu mengubah banyak hal sekaligus.
+4. Temukan AKAR masalah, bukan hanya gejalanya. Jelaskan singkat mengapa itu terjadi.
+5. Perbaiki seminimal mungkin, jalankan ulang untuk membuktikan masalah hilang, dan jalankan tes terkait agar tidak ada regresi. Hapus log atau kode debug sementara.
+6. Tutup dengan ringkasan: penyebab, perbaikan yang dibuat, dan cara memverifikasinya. Jangan menyatakan "sudah diperbaiki" sebelum benar-benar diverifikasi; kalau tidak bisa diverifikasi, katakan apa yang belum teruji.`
+
 export const Plugin = define({
   id: "opencode.agent",
   effect: Effect.fn(function* (ctx) {
     yield* ctx.agent.transform((editor) => {
       editor.update(Agent.defaultID, (item) => {
-        item.name = Agent.Name.make("Build")
-        item.description = "The default agent. Executes tools based on configured permissions."
+        item.name = Agent.Name.make("Code Agent")
+        item.variant = "high"
+        item.description = "Agen coding utama: membaca, menulis, dan menjalankan kode sesuai izin yang dikonfigurasi."
+        item.mode = "primary"
+        item.permissions.push({ action: "question", resource: "*", effect: "allow" })
+      })
+
+
+      editor.update(Agent.ID.make("chat"), (item) => {
+        item.name = Agent.Name.make("Chat")
+        item.variant = "medium"
+        item.description = "Tanya jawab dan diskusi teknis. Tidak mengubah file dan tidak menjalankan perintah."
+        item.system = PROMPT_CHAT
+        item.mode = "primary"
+        item.permissions.push(
+          { action: "*", resource: "*", effect: "deny" },
+          { action: "question", resource: "*", effect: "allow" },
+          { action: "read", resource: "*", effect: "allow" },
+          { action: "read", resource: "*.env", effect: "ask" },
+          { action: "read", resource: "*.env.*", effect: "ask" },
+          { action: "read", resource: "*.env.example", effect: "allow" },
+          { action: "grep", resource: "*", effect: "allow" },
+          { action: "glob", resource: "*", effect: "allow" },
+          { action: "webfetch", resource: "*", effect: "allow" },
+          { action: "websearch", resource: "*", effect: "allow" },
+        )
+      })
+
+      editor.update(Agent.ID.make("reviews"), (item) => {
+        item.name = Agent.Name.make("Reviews")
+        item.variant = "medium"
+        item.description = "Review kode: mencari bug, risiko keamanan, dan masalah kualitas. Tidak mengubah file."
+        item.system = PROMPT_REVIEWS
+        item.mode = "primary"
+        item.permissions.push(
+          { action: "*", resource: "*", effect: "deny" },
+          { action: "question", resource: "*", effect: "allow" },
+          { action: "shell", resource: "*", effect: "allow" },
+          { action: "read", resource: "*", effect: "allow" },
+          { action: "read", resource: "*.env", effect: "ask" },
+          { action: "read", resource: "*.env.*", effect: "ask" },
+          { action: "read", resource: "*.env.example", effect: "allow" },
+          { action: "grep", resource: "*", effect: "allow" },
+          { action: "glob", resource: "*", effect: "allow" },
+          { action: "webfetch", resource: "*", effect: "allow" },
+          { action: "websearch", resource: "*", effect: "allow" },
+        )
+      })
+
+      // Planning is configured by the plan plugin; registering it here only fixes its place in the mode order.
+      editor.update(Agent.ID.make("plan"), (item) => {
+        item.name = Agent.Name.make("Planning")
+        item.variant = "medium"
+        item.mode = "primary"
+      })
+
+      editor.update(Agent.ID.make("debugging"), (item) => {
+        item.name = Agent.Name.make("Debugging")
+        item.variant = "medium"
+        item.description = "Mencari akar masalah bug: reproduksi, uji hipotesis, perbaiki, lalu verifikasi."
+        item.system = PROMPT_DEBUGGING
         item.mode = "primary"
         item.permissions.push({ action: "question", resource: "*", effect: "allow" })
       })

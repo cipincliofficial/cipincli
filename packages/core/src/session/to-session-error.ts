@@ -26,7 +26,10 @@ const tokenSharingMessages = {
 }
 
 const FREE_USAGE_LIMIT_MESSAGE =
-  "Free usage limit reached. Connect a provider or subscribe to OpenCode Go to keep going, or switch models."
+  "Kuota token habis atau paket Unlimited belum aktif. Top up di https://cipincode.com/mbr/dashboard/topup untuk melanjutkan, atau ganti model."
+
+// OpenCode's own free-limit marker, plus the `blocked` reasons the Cipincode gateway puts in its error body.
+const FREE_LIMIT_BODY = /FreeUsageLimitError|"blocked"\s*:\s*"(cipin_unlimited|tokens|session|weekly)"/
 
 export function toSessionError(cause: unknown): SessionError.Error {
   if (cause instanceof AIError) {
@@ -36,7 +39,7 @@ export function toSessionError(cause: unknown): SessionError.Error {
       case "Authentication":
         return providerError("provider.auth", cause.reason)
       case "QuotaExceeded":
-        if (!cause.reason.body?.includes("FreeUsageLimitError")) return providerError("provider.quota", cause.reason)
+        if (!FREE_LIMIT_BODY.test(cause.reason.body ?? "")) return providerError("provider.quota", cause.reason)
         return {
           ...providerError("provider.free-limit", cause.reason),
           message: FREE_USAGE_LIMIT_MESSAGE,

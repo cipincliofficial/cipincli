@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync }
 import { homedir, hostname } from "node:os"
 import { join } from "node:path"
 import { createInterface } from "node:readline/promises"
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import { OPENCODE_VERSION } from "./version"
 
 /**
@@ -64,8 +64,15 @@ async function login() {
   openBrowser(url)
 
   const rl = createInterface({ input: process.stdin, output: process.stdout })
-  const code = (await rl.question("Tempel kode (XXXX-XXXX): ")).trim()
+  const code = await rl
+    .question("Tempel kode (XXXX-XXXX): ", { signal: AbortSignal.timeout(5 * 60_000) })
+    .then((answer) => answer.trim())
+    .catch(() => undefined)
   rl.close()
+  if (code === undefined) {
+    console.log("\nLogin dibatalkan. Jalankan cipin login lagi kalau mau mencoba.")
+    process.exit(130)
+  }
   if (!code) return fail("Kode kosong.")
 
   const response = await api("/api/cli/exchange", {
@@ -102,6 +109,16 @@ function logout() {
   console.log("Sudah keluar.")
 }
 
+/** `cipin upgrade` / `cipin uninstall` go through npm, which is how Cipin CLI is installed. */
+function npmCommand(args: string[], doneMessage: string) {
+  const child = spawn("npm", args, { stdio: "inherit", shell: process.platform === "win32" })
+  child.on("error", (error) => fail(`npm tidak bisa dijalankan: ${error.message}`))
+  child.on("exit", (code) => {
+    if (code === 0) console.log(doneMessage)
+    process.exit(code ?? 1)
+  })
+}
+
 function topup() {
   const url = `${SITE}/mbr/dashboard/topup`
   console.log(url)
@@ -131,6 +148,28 @@ async function models(key: string): Promise<string[]> {
   return FALLBACK_MODELS
 }
 
+const versionFile = join(dir, "service-version")
+
+/**
+ * The background service outlives the terminal and is shared by every cipin binary, so after an upgrade it would keep
+ * serving the old version's agents and settings. Stop it once whenever the installed version changes.
+ */
+function restartStaleService() {
+  if (process.env.CIPIN_SKIP_SERVICE_CHECK) return
+  let previous: string | undefined
+  try {
+    previous = readFileSync(versionFile, "utf8").trim()
+  } catch {}
+  if (previous === OPENCODE_VERSION) return
+  spawnSync(process.execPath, process.execPath.endsWith("bun") ? [process.argv[1], "service", "stop"] : ["service", "stop"], {
+    stdio: "ignore",
+    env: { ...process.env, CIPIN_SKIP_SERVICE_CHECK: "1" },
+    timeout: 15_000,
+  })
+  mkdirSync(dir, { recursive: true, mode: 0o700 })
+  writeFileSync(versionFile, OPENCODE_VERSION)
+}
+
 const passthrough = new Set(["--version", "-v", "--help", "-h", "help"])
 
 /** Handles Cipin's own commands, then points opencode at the gateway. Returns when opencode should start. */
@@ -146,12 +185,19 @@ export async function cipin() {
       return await whoami().then(() => process.exit(0))
     case "topup":
       return topup(), process.exit(0)
+    case "upgrade":
+    case "update":
+      return npmCommand(["install", "-g", "cipincli@latest"], "Selesai. Jalankan cipin lagi untuk memakai versi terbaru."), await new Promise(() => {})
+    case "uninstall":
+      return npmCommand(["uninstall", "-g", "cipincli"], "Cipin CLI dihapus. Login Anda tersimpan di ~/.config/cipin (hapus manual kalau perlu)."), await new Promise(() => {})
   }
 
   if (command !== undefined && passthrough.has(command) && rest.length === 0) return
 
   const auth = readAuth()
   if (!auth) return fail("Belum masuk. Jalankan: cipin login")
+
+  restartStaleService()
 
   const ids = await models(auth.key)
   const config = {
@@ -160,7 +206,18 @@ export async function cipin() {
         npm: "@ai-sdk/openai-compatible",
         name: "Cipin",
         options: { baseURL: `${SITE}/v1`, apiKey: auth.key, headers: { "x-cipin-client": CLIENT } },
-        models: Object.fromEntries(ids.map((id) => [id, { name: id }])),
+        models: Object.fromEntries(
+          ids.map((id) => [
+            id,
+            {
+              name: id,
+              // The gateway passes reasoning_effort through to every model it serves.
+              variants: Object.fromEntries(
+                ["low", "medium", "high"].map((effort) => [effort, { reasoningEffort: effort }]),
+              ),
+            },
+          ]),
+        ),
       },
     },
     enabled_providers: ["cipin"],
@@ -169,6 +226,9 @@ export async function cipin() {
     share: "disabled",
   }
 
+  process.env.CIPIN_VERSION = OPENCODE_VERSION
+  process.env.CIPIN_API_URL = SITE
+  process.env.CIPIN_API_KEY = auth.key
   process.env.OPENCODE_CONFIG_CONTENT = JSON.stringify(config)
   process.env.OPENCODE_DISABLE_MODELS_FETCH = "1"
   process.env.OPENCODE_DISABLE_AUTOUPDATE = "1"

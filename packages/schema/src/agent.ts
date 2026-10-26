@@ -24,6 +24,8 @@ export const Info = Schema.Struct({
   id: ID,
   name: Name,
   model: Model.Ref.pipe(optional),
+  /** Effort (model variant) this agent starts with when the user has not picked one. Ignored when the model lacks it. */
+  variant: Schema.String.pipe(optional),
   request: Provider.Request,
   system: Schema.String.pipe(optional),
   description: Schema.String.pipe(optional),

@@ -32,8 +32,8 @@ export const Plugin = define({
     const enterReminder = enter(directory)
     yield* ctx.agent.transform((editor) => {
       editor.update(plan, (item) => {
-        item.name = Agent.Name.make("Plan")
-        item.description = "Read-only agent for exploring the codebase and planning work before implementation."
+        item.name = Agent.Name.make("Planning")
+        item.description = "Merencanakan pekerjaan: membaca dan menjelajahi kode tanpa mengubahnya, lalu menyusun rencana sebelum implementasi."
         item.mode = "primary"
         item.permissions.push({ action: "question", resource: "*", effect: "allow" })
         item.permissions.push({ action: "edit", resource: "*", effect: "deny" })

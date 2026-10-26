@@ -2117,6 +2117,7 @@ export type AgentInfo = {
   id: AgentID
   name: string
   model?: ModelRef
+  variant?: string
   request: ProviderRequest
   system?: string
   description?: string
