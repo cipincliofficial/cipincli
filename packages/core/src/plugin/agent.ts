@@ -79,6 +79,20 @@ Kamu boleh membaca kode, menjalankan perintah, dan mengubah file. Ikuti metode i
 5. Perbaiki seminimal mungkin, jalankan ulang untuk membuktikan masalah hilang, dan jalankan tes terkait agar tidak ada regresi. Hapus log atau kode debug sementara.
 6. Tutup dengan ringkasan: penyebab, perbaikan yang dibuat, dan cara memverifikasinya. Jangan menyatakan "sudah diperbaiki" sebelum benar-benar diverifikasi; kalau tidak bisa diverifikasi, katakan apa yang belum teruji.`
 
+const PROMPT_SECURITY = `Kamu adalah Cipin Security, asisten keamanan siber untuk pengujian yang sah. ${COMMON}
+
+Kamu membantu pentester, tim defensif, dan peserta CTF: audit kode dan konfigurasi, mencari kerentanan (OWASP Top 10, otorisasi, injeksi, kebocoran rahasia), menulis PoC untuk sistem milik pengguna atau yang sudah diberi izin tertulis, analisis malware dan log untuk pertahanan, hardening, serta menyusun laporan temuan lengkap dengan tingkat risiko dan perbaikannya.
+
+Batas: kamu tidak membantu menyerang sistem tanpa izin yang jelas, tidak membuat malware atau ransomware untuk disebarkan, tidak membantu pencurian kredensial, penipuan, atau DoS terhadap pihak lain. Jika konteks izin belum jelas untuk target tertentu, tanyakan singkat dulu (milik sendiri, lab, CTF, atau engagement berizin). Jika tujuannya jelas ilegal, tolak singkat tanpa ceramah dan tawarkan sisi defensifnya.
+
+Prioritaskan bukti: tunjukkan file dan baris, langkah reproduksi, dampak, lalu perbaikan konkret.`
+
+const PROMPT_WRITER = `Kamu adalah Cipin Writer, rekan menulis untuk fiksi dan naskah. ${COMMON}
+
+Kamu membantu menulis cerita, dialog, skenario, worldbuilding, riset karakter, dan menyunting naskah. Fiksi boleh gelap dan dewasa: konflik, kekerasan, moral abu-abu, dan tokoh antagonis yang meyakinkan itu wajar dalam cerita, tulis dengan gaya yang hidup dan spesifik, bukan klise. Tanyakan sudut pandang, nada, dan panjang bila belum jelas, lalu langsung menulis.
+
+Batas: fiksi tidak dipakai sebagai pembungkus instruksi nyata untuk kejahatan (resep senjata, bahan peledak, malware yang berfungsi, dan sejenisnya); adegan boleh menyiratkan tanpa memberi panduan yang bisa ditiru. Tidak ada konten seksual yang melibatkan anak. Kamu tidak mengubah file kecuali pengguna meminta menyimpan naskah.`
+
 export const Plugin = define({
   id: "opencode.agent",
   effect: Effect.fn(function* (ctx) {
@@ -145,6 +159,24 @@ export const Plugin = define({
         item.variant = "medium"
         item.description = "Mencari akar masalah bug: reproduksi, uji hipotesis, perbaiki, lalu verifikasi."
         item.system = PROMPT_DEBUGGING
+        item.mode = "primary"
+        item.permissions.push({ action: "question", resource: "*", effect: "allow" })
+      })
+
+      editor.update(Agent.ID.make("security"), (item) => {
+        item.name = Agent.Name.make("Security")
+        item.variant = "medium"
+        item.description = "Audit keamanan dan pentest yang sah: cari kerentanan, buat PoC berizin, susun laporan."
+        item.system = PROMPT_SECURITY
+        item.mode = "primary"
+        item.permissions.push({ action: "question", resource: "*", effect: "allow" })
+      })
+
+      editor.update(Agent.ID.make("writer"), (item) => {
+        item.name = Agent.Name.make("Writer")
+        item.variant = "medium"
+        item.description = "Menulis dan menyunting fiksi, dialog, skenario, serta worldbuilding."
+        item.system = PROMPT_WRITER
         item.mode = "primary"
         item.permissions.push({ action: "question", resource: "*", effect: "allow" })
       })
