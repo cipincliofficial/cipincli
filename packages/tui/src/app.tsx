@@ -47,7 +47,6 @@ import {
   type TuiApp,
 } from "./context/runtime"
 import { DialogProvider, useDialog } from "./ui/dialog"
-import { DialogIntegration } from "./component/dialog-integration"
 import { ErrorComponent } from "./component/error-component"
 import { PluginRouteMissing } from "./component/plugin-route-missing"
 import { EditorContextProvider } from "./context/editor"
@@ -63,12 +62,10 @@ import { LocationProvider, useLocation } from "./context/location"
 import { LocalProvider, useLocal } from "./context/local"
 import { PermissionProvider } from "./context/permission"
 import { DialogModel } from "./component/dialog-model"
-import { useConnected } from "./component/use-connected"
 import { DialogMcp } from "./component/dialog-mcp"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogConfig } from "./component/dialog-config"
 import { DialogDebug } from "./component/dialog-debug"
-import { DialogPair } from "./component/dialog-pair"
 import { DialogHighlights } from "./component/dialog-highlights"
 import { claim } from "./util/highlights"
 import { DialogThemeList } from "./component/dialog-theme-list"
@@ -159,11 +156,10 @@ const appBindingCommands = [
   "agent.cycle.reverse",
   "variant.cycle",
   "variant.list",
-  "provider.connect",
+  "cipin.topup",
   "opencode.settings",
   "opencode.status",
   "opencode.update",
-  "server.pair",
   "service.restart",
   "location.reload",
   "opencode.debug",
@@ -744,7 +740,6 @@ function App() {
       .catch(toast.error)
   })
 
-  const connected = useConnected()
   const appCommands = createMemo(() =>
     [
       {
@@ -1003,18 +998,15 @@ function App() {
         },
       },
       {
-        name: "provider.connect",
-        title: "Connect an integration",
-        suggested: !connected(),
-        slash: { name: "connect" },
+        name: "cipin.topup",
+        title: "Top up paket",
+        suggested: true,
+        slash: { name: "topup" },
         run: () => {
-          dialog.replace(() => (
-            <DialogIntegration
-              onConnected={(providerID) => dialog.replace(() => <DialogModel providerID={providerID} />)}
-            />
-          ))
+          openUrl("https://cipincode.com/mbr/dashboard/topup").catch(() => {})
+          dialog.clear()
         },
-        category: "Integration",
+        category: "Akun",
       },
       ...(app.highlights?.length
         ? [
@@ -1039,7 +1031,8 @@ function App() {
       },
       {
         name: "opencode.status",
-        title: "View status",
+        title: "Status akun",
+        suggested: true,
         slash: { name: "status" },
         run: () => {
           dialog.replace(() => <DialogStatus />)
@@ -1057,15 +1050,6 @@ function App() {
             },
           ]
         : []),
-      {
-        name: "server.pair",
-        title: "Pair device",
-        slash: { name: "pair", aliases: ["web"] },
-        run: () => {
-          dialog.replace(() => <DialogPair />)
-        },
-        category: "System",
-      },
       ...(client.restart
         ? [
             {
@@ -1154,9 +1138,9 @@ function App() {
       },
       {
         name: "docs.open",
-        title: "Open docs",
+        title: "Buka halaman Cipin CLI",
         run: () => {
-          openUrl("https://opencode.ai/v2/docs").catch(() => {})
+          openUrl("https://cipincode.com/cli").catch(() => {})
           dialog.clear()
         },
         category: "System",

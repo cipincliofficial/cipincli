@@ -2045,7 +2045,7 @@ function AssistantFooter(props: { message: SessionMessageAssistant }) {
       <box paddingLeft={3} marginTop={props.message.retry || (props.message.error && !interrupted()) ? 1 : 0}>
         <text>
           <span style={{ fg: props.message.error ? theme.text.muted : local.agent.color(props.message.agent) }}>
-            {Locale.titlecase(props.message.agent)}
+            {local.agent.label(props.message.agent)}
           </span>
           <Show when={ctx.terminal.width >= 28}>
             <span style={{ fg: theme.text.muted }}> · {model()}</span>

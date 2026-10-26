@@ -1,6 +1,6 @@
 {
   "name": "cipincli",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "Cipin CLI: AI coding agent in your terminal, powered by the Cipincode gateway",
   "license": "MIT",
   "homepage": "https://cipincode.com/cli",

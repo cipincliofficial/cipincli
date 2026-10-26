@@ -40,7 +40,7 @@ export function SidebarOnboarding(props: { context: Plugin.Context; sessionID: s
         <box flexGrow={1} gap={1}>
           <box flexDirection="row" justifyContent="space-between">
             <text fg={props.context.theme.text.base}>
-              <b>Getting started</b>
+              <b>Mulai di sini</b>
             </text>
             <text
               id="sidebar.footer.getting-started.dismiss"
@@ -54,19 +54,19 @@ export function SidebarOnboarding(props: { context: Plugin.Context; sessionID: s
               ✕
             </text>
           </box>
-          <text fg={props.context.theme.text.muted}>OpenCode includes free models so you can start immediately.</text>
+          <text fg={props.context.theme.text.muted}>Cipin CLI terhubung ke gateway Cipincode dan hanya menjawab dengan paket Unlimited aktif.</text>
           <text fg={props.context.theme.text.muted}>
-            Connect from 75+ providers to use other models, including Claude, GPT, Gemini etc
+            Cek kuota dengan /usage, lihat akun dengan /status, ganti mode dengan Shift+Tab.
           </text>
           <box
             id="sidebar.footer.getting-started.connect"
             flexDirection="row"
             gap={1}
             justifyContent="space-between"
-            onMouseUp={() => props.context.keymap.dispatch("provider.connect")}
+            onMouseUp={() => props.context.keymap.dispatch("cipin.topup")}
           >
-            <text fg={props.context.theme.text.base}>Connect provider</text>
-            <text fg={props.context.theme.text.muted}>/connect</text>
+            <text fg={props.context.theme.text.base}>Top up paket</text>
+            <text fg={props.context.theme.text.muted}>/topup</text>
           </box>
         </box>
       </box>

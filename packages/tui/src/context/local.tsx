@@ -26,6 +26,7 @@ import { useData } from "./data"
 import { usePermission } from "./permission"
 import { useLocation } from "./location"
 import { parse } from "../util/model"
+import { Locale } from "../util/locale"
 
 export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
   name: "Local",
@@ -124,6 +125,10 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             const value = agents()[next]
             this.set(value.id)
           })
+        },
+        /** The agent's display name (e.g. "Code Agent"), falling back to the capitalized id. */
+        label(id: string) {
+          return visibleAgents().find((agent) => agent.id === id)?.name ?? Locale.titlecase(id)
         },
         color(id: string) {
           const index = visibleAgents().findIndex((agent) => agent.id === id)

@@ -43,8 +43,6 @@ import { Locale } from "../../util/locale"
 import { errorMessage } from "../../util/error"
 import { createColors, createFrames } from "../../ui/spinner"
 import { useDialog } from "../../ui/dialog"
-import { DialogIntegration } from "../dialog-integration"
-import { useConnected } from "../use-connected"
 import { useToast } from "../../ui/toast"
 import { createFadeIn } from "../../util/signal"
 import { DialogSkill } from "../dialog-skill"
@@ -312,17 +310,13 @@ export function Prompt(props: PromptProps) {
     ],
   }))
   const [cursorVersion, setCursorVersion] = createSignal(0)
-  const connected = useConnected()
 
   function promptModelWarning() {
     toast.show({
       variant: "warning",
-      message: "Connect an integration to send prompts",
+      message: "Belum terhubung ke Cipincode. Jalankan: cipin login",
       duration: 3000,
     })
-    if (!connected()) {
-      dialog.replace(() => <DialogIntegration />)
-    }
   }
 
   function dismissEditorContext() {
@@ -1555,7 +1549,7 @@ export function Prompt(props: PromptProps) {
       const agent = local.agent.current()
       const model = local.model.parsed()
       return {
-        agentLabel: agent ? Locale.titlecase(agent.id) : undefined,
+        agentLabel: agent ? local.agent.label(agent.id) : undefined,
         agentColor: agent ? local.agent.color(agent.id) : undefined,
         modelLabel: model.model,
         providerLabel: model.provider,
